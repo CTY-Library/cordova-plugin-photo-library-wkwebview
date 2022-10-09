@@ -99,10 +99,10 @@ public class PhotoLibraryService {
       int imageId = getImageId(photoId);
       // For some reason and against documentation, MINI_KIND image can be returned in size different from 512x384, so the image will be scaled later if needed
       bitmap = MediaStore.Images.Thumbnails.getThumbnail(
-        context.getContentResolver(),
-        imageId ,
-        MediaStore.Images.Thumbnails.MINI_KIND,
-        (BitmapFactory.Options) null);
+              context.getContentResolver(),
+              imageId ,
+              MediaStore.Images.Thumbnails.MINI_KIND,
+              (BitmapFactory.Options) null);
     }
 
     if (bitmap == null) { // No free caching here
@@ -196,14 +196,15 @@ public class PhotoLibraryService {
   }
 
   public void saveImage(final Context context, final CordovaInterface cordova, final String url, String album, final JSONObjectRunnable completion)
-    throws IOException, URISyntaxException {
+          throws IOException, URISyntaxException {
 
     saveMedia(context, cordova, url, album, imageMimeToExtension, new FilePathRunnable() {
       @Override
-      public void run(String filePath) {
+      public void run(String filePath, Uri uri) {
         try {
           // Find the saved image in the library and return it as libraryItem
-          String whereClause = MediaStore.MediaColumns.DATA + " = \"" + filePath + "\"";
+          String whereClause = "(" + MediaStore.MediaColumns.DATA + " = \"" + filePath + "\")";
+          whereClause = uri.toString();
           queryLibrary(context, whereClause, new ChunkResultRunnable() {
             @Override
             public void run(ArrayList<JSONObject> chunk, int chunkNum, boolean isLastChunk) {
@@ -219,15 +220,14 @@ public class PhotoLibraryService {
   }
 
   public void saveVideo(final Context context, final CordovaInterface cordova, String url, String album)
-    throws IOException, URISyntaxException {
+          throws IOException, URISyntaxException {
 
     saveMedia(context, cordova, url, album, videMimeToExtension, new FilePathRunnable() {
       @Override
-      public void run(String filePath) {
+      public void run(String filePath, Uri uri) {
         // TODO: call queryLibrary and return libraryItem of what was saved
       }
     });
-
   }
 
   public class PictureData {
@@ -280,10 +280,22 @@ public class PhotoLibraryService {
 
     final String sortOrder = MediaStore.Images.Media.DATE_TAKEN + " DESC";
 
-    final Cursor cursor = context.getContentResolver().query(
-      collection,
-      columnValues.toArray(new String[columns.length()]),
-      whereClause, null, sortOrder);
+    Cursor cursor;
+    if (whereClause == "")
+    {
+      cursor= context.getContentResolver().query(
+              collection,
+              columnValues.toArray(new String[columns.length()]),
+              whereClause, null, sortOrder);
+    }
+    else
+    {
+      Uri uri = Uri.parse(whereClause);
+      cursor= context.getContentResolver().query(
+              uri,
+              columnValues.toArray(new String[columns.length()]),
+              null, null, null);
+    }
 
     final ArrayList<JSONObject> buffer = new ArrayList<JSONObject>();
 
@@ -328,7 +340,7 @@ public class PhotoLibraryService {
   }
 
   private void queryLibrary(Context context, int itemsInChunk, double chunkTimeSec, boolean includeAlbumData, String whereClause, ChunkResultRunnable completion)
-    throws JSONException {
+          throws JSONException {
 
     // All columns here: https://developer.android.com/reference/android/provider/MediaStore.Images.ImageColumns.html,
     // https://developer.android.com/reference/android/provider/MediaStore.MediaColumns.html
@@ -368,8 +380,8 @@ public class PhotoLibraryService {
 
       // photoId is in format "imageid;imageurl"
       queryResult.put("id",
-          queryResult.get("id") + ";" +
-          queryResult.get("nativeURL"));
+              queryResult.get("id") + ";" +
+                      queryResult.get("nativeURL"));
 
       queryResult.remove("nativeURL"); // Not needed
 
@@ -399,10 +411,10 @@ public class PhotoLibraryService {
   private String queryMimeType(Context context, int imageId) {
 
     Cursor cursor = context.getContentResolver().query(
-      MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-      new String[] { MediaStore.Images.ImageColumns.MIME_TYPE },
-      MediaStore.MediaColumns._ID + "=?",
-      new String[] {Integer.toString(imageId)}, null);
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            new String[] { MediaStore.Images.ImageColumns.MIME_TYPE },
+            MediaStore.MediaColumns._ID + "=?",
+            new String[] {Integer.toString(imageId)}, null);
 
     if (cursor != null && cursor.moveToFirst()) {
       String mimeType = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.MIME_TYPE));
@@ -419,7 +431,7 @@ public class PhotoLibraryService {
   // From https://developer.android.com/training/displaying-bitmaps/load-bitmap.html
   private static int calculateInSampleSize(
 
-    BitmapFactory.Options options, int reqWidth, int reqHeight) {
+          BitmapFactory.Options options, int reqWidth, int reqHeight) {
     // Raw height and width of image
     final int height = options.outHeight;
     final int width = options.outWidth;
@@ -433,7 +445,7 @@ public class PhotoLibraryService {
       // Calculate the largest inSampleSize value that is a power of 2 and keeps both
       // height and width larger than the requested height and width.
       while ((halfHeight / inSampleSize) >= reqHeight
-        && (halfWidth / inSampleSize) >= reqWidth) {
+              && (halfWidth / inSampleSize) >= reqWidth) {
         inSampleSize *= 2;
       }
     }
@@ -505,7 +517,7 @@ public class PhotoLibraryService {
 
     switch (orientation) {
       case ExifInterface.ORIENTATION_NORMAL: // 1
-          return source;
+        return source;
       case ExifInterface.ORIENTATION_FLIP_HORIZONTAL: // 2
         matrix.setScale(-1, 1);
         break;
@@ -541,9 +553,9 @@ public class PhotoLibraryService {
   // Returns true if orientation rotates image by 90 or 270 degrees.
   private static boolean isOrientationSwapsDimensions(int orientation) {
     return orientation == ExifInterface.ORIENTATION_TRANSPOSE // 5
-      || orientation == ExifInterface.ORIENTATION_ROTATE_90 // 6
-      || orientation == ExifInterface.ORIENTATION_TRANSVERSE // 7
-      || orientation == ExifInterface.ORIENTATION_ROTATE_270; // 8
+            || orientation == ExifInterface.ORIENTATION_ROTATE_90 // 6
+            || orientation == ExifInterface.ORIENTATION_TRANSVERSE // 7
+            || orientation == ExifInterface.ORIENTATION_ROTATE_270; // 8
   }
 
   private static File makeAlbumInPhotoLibrary(String album) {
@@ -557,8 +569,8 @@ public class PhotoLibraryService {
   private File getImageFileName(File albumDirectory, String extension) {
     Calendar calendar = Calendar.getInstance();
     String dateStr = calendar.get(Calendar.YEAR) +
-      "-" + calendar.get(Calendar.MONTH) +
-      "-" + calendar.get(Calendar.DAY_OF_MONTH);
+            "-" + calendar.get(Calendar.MONTH) +
+            "-" + calendar.get(Calendar.DAY_OF_MONTH);
     int i = 1;
     File result;
     do {
@@ -576,7 +588,7 @@ public class PhotoLibraryService {
     MediaScannerConnection.scanFile(context, new String[]{filePath}, null, new MediaScannerConnection.OnScanCompletedListener() {
       @Override
       public void onScanCompleted(String path, Uri uri) {
-        completion.run(path);
+        completion.run(path, uri);
       }
     });
 
@@ -592,7 +604,7 @@ public class PhotoLibraryService {
   }};
 
   private void saveMedia(Context context, CordovaInterface cordova, String url, String album, Map<String, String> mimeToExtension, FilePathRunnable completion)
-    throws IOException, URISyntaxException {
+          throws IOException, URISyntaxException {
 
     File albumDirectory = makeAlbumInPhotoLibrary(album);
     File targetFile;
@@ -662,7 +674,7 @@ public class PhotoLibraryService {
 
   public interface FilePathRunnable {
 
-    void run(String filePath);
+    void run(String filePath, Uri uri);
 
   }
 
