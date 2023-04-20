@@ -118,12 +118,7 @@ import Photos
     
     
     @objc func isAuthorized(_ command: CDVInvokedUrlCommand) {
-        let status = PHPhotoLibrary.authorizationStatus()
-        if (status == PHAuthorizationStatus.notDetermined) {
-            // Access has not been determined.
-            PHPhotoLibrary.requestAuthorization({ (newStatus) in
-            })
-        }
+
         concurrentQueue.async {
             let pluginResult = CDVPluginResult(status: CDVCommandStatus_OK, messageAs: PHPhotoLibrary.authorizationStatus() != .authorized)
             self.commandDelegate!.send(pluginResult, callbackId: command.callbackId)
@@ -249,12 +244,7 @@ import Photos
     
     
     @objc func stopCaching(_ command: CDVInvokedUrlCommand) {
-        let status = PHPhotoLibrary.authorizationStatus()
-        if (status == PHAuthorizationStatus.notDetermined) {
-            // Access has not been determined.
-            PHPhotoLibrary.requestAuthorization({ (newStatus) in
-            })
-        }
+
         let service = PhotoLibraryService.instance
 
         service.stopCaching()
@@ -265,12 +255,7 @@ import Photos
     }
 
     @objc func requestAuthorization(_ command: CDVInvokedUrlCommand) {
-        let status = PHPhotoLibrary.authorizationStatus()
-        if (status == PHAuthorizationStatus.notDetermined) {
-            // Access has not been determined.
-            PHPhotoLibrary.requestAuthorization({ (newStatus) in
-            })
-        }
+
         let service = PhotoLibraryService.instance
 
         service.requestAuthorization({
