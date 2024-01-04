@@ -202,10 +202,10 @@ public class PhotoLibrary extends CordovaPlugin {
               final String url = args.getString(0);
               final String album = args.getString(1);
 
-              if (!cordova.hasPermission(WRITE_EXTERNAL_STORAGE)) {
-                callbackContext.error(service.PERMISSION_ERROR);
+              //if (!cordova.hasPermission(WRITE_EXTERNAL_STORAGE)) {
+               // callbackContext.error(service.PERMISSION_ERROR);
                 //return;
-              }
+             // }
 
               PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, album);
               pluginResult.setKeepCallback(true);
