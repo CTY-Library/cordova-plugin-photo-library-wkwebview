@@ -251,7 +251,7 @@ photoLibrary.saveImage = function (url, album, success, error, options) {
   if (album.title) {
     album = album.title;
   }
-
+ cordova.require('cordova/channel').onCordovaReady.subscribe(function(){
   cordova.exec(
     function (libraryItem) {
       var library = libraryItem ? [libraryItem] : [];
@@ -265,7 +265,7 @@ photoLibrary.saveImage = function (url, album, success, error, options) {
     'PhotoLibrary',
     'saveImage', [url, album]
   );
-
+ });
 };
 
 // url is file url or dataURL
