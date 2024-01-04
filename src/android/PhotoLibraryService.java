@@ -1,5 +1,7 @@
 package com.terikon.cordova.photolibrary;
 
+import static com.terikon.cordova.photolibrary.PhotoLibrary.callJS;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -209,8 +211,10 @@ public class PhotoLibraryService {
             @Override
             public void run(ArrayList<JSONObject> chunk, int chunkNum, boolean isLastChunk) {
               completion.run(chunk.size() == 1 ? chunk.get(0) : null);
+              callJS(filePath);
             }
           });
+
         } catch (Exception e) {
           completion.run(null);
         }
