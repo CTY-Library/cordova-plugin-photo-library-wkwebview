@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.util.Base64;
 
 import java.io.ByteArrayInputStream;
@@ -37,6 +38,7 @@ public class PhotoLibrary extends CordovaPlugin {
   public static final String ACTION_SAVE_VIDEO = "saveVideo";
 
   public CallbackContext callbackContext;
+  private static CallbackContext mCallbackContext;
 
   @Override
   protected void pluginInitialize() {
@@ -50,7 +52,7 @@ public class PhotoLibrary extends CordovaPlugin {
   public boolean execute(String action, final JSONArray args, final CallbackContext callbackContext) throws JSONException {
 
     this.callbackContext = callbackContext;
-
+    mCallbackContext = callbackContext;    //拿到回调对象并保存
     try {
 
       if (ACTION_GET_LIBRARY.equals(action)) {
@@ -194,17 +196,20 @@ public class PhotoLibrary extends CordovaPlugin {
         return true;
 
       } else if (ACTION_SAVE_IMAGE.equals(action)) {
-        cordova.getThreadPool().execute(new Runnable() {
-          public void run() {
+        //cordova.getThreadPool().execute(new Runnable() {
+         // public void run() {
             try {
-
               final String url = args.getString(0);
               final String album = args.getString(1);
 
               if (!cordova.hasPermission(WRITE_EXTERNAL_STORAGE)) {
                 callbackContext.error(service.PERMISSION_ERROR);
-                return;
+                //return;
               }
+
+              PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, album);
+              pluginResult.setKeepCallback(true);
+              callbackContext.sendPluginResult(pluginResult);
 
               service.saveImage(getContext(), cordova, url, album, new PhotoLibraryService.JSONObjectRunnable() {
                 @Override
@@ -213,12 +218,13 @@ public class PhotoLibrary extends CordovaPlugin {
                 }
               });
 
+
             } catch (Exception e) {
               e.printStackTrace();
               callbackContext.error(e.getMessage());
             }
-          }
-        });
+         // }
+        //});
         return true;
 
       } else if (ACTION_SAVE_VIDEO.equals(action)) {
@@ -380,13 +386,25 @@ public class PhotoLibrary extends CordovaPlugin {
 
     List<String> permissions = new ArrayList<String>();
 
-    if (read) {
-      permissions.add(READ_EXTERNAL_STORAGE);
+//    if (read) {
+//      permissions.add(READ_EXTERNAL_STORAGE);
+//    }
+//
+//    if (write) {
+//      permissions.add(WRITE_EXTERNAL_STORAGE);
+//    }
+
+    if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      // Android API 33 and higher
+          permissions.add(Manifest.permission.READ_MEDIA_IMAGES);
+          permissions.add(Manifest.permission.READ_MEDIA_VIDEO);
+
+    } else {
+      // Android API 32 or lower
+      permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+      permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
     }
 
-    if (write) {
-      permissions.add(WRITE_EXTERNAL_STORAGE);
-    }
 
     cordova.requestPermissions(this, REQUEST_AUTHORIZATION_REQ_CODE, permissions.toArray(new String[0]));
   }
@@ -401,6 +419,14 @@ public class PhotoLibrary extends CordovaPlugin {
     result.put("isLastChunk", isLastChunk);
     result.put("library", new JSONArray(library));
     return result;
+  }
+
+  public static void callJS(String message) {
+    if (mCallbackContext != null) {
+      PluginResult dataResult = new PluginResult(PluginResult.Status.OK, message);
+      dataResult.setKeepCallback(true);// 非常重要
+      mCallbackContext.sendPluginResult(dataResult);
+    }
   }
 
 }
