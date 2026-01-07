@@ -518,6 +518,7 @@ final class PhotoLibraryService {
             return
         }
         
+        
         var placeholder: PHObjectPlaceholder?
         // 写入图片到系统相册
         PHPhotoLibrary.shared().performChanges({
@@ -543,12 +544,87 @@ final class PhotoLibraryService {
                 completion(nil, errorMsg)
             }
         })
-        
-        
-        
-        
-        
     }
+    
+    
+    //   - 下载并保存视频到相册
+        func saveVideo(_ url: String, album: String, completion: @escaping (_ libraryItem: NSDictionary?, _ error: String?)->Void) {
+            // 验证URL格式
+            guard let videoURL = URL(string: url) else {
+                completion(nil, "无效的视频URL")
+                return
+            }
+            self.downloadAndSaveVideo(videoURL: videoURL, album: album, completion: completion)
+           
+        }
+        
+        //   - 下载并保存视频
+        private func downloadAndSaveVideo(videoURL: URL, album: String, completion: @escaping (_ libraryItem: NSDictionary?, _ error: String?)->Void) {
+            
+            PHPhotoLibrary.requestAuthorization { status in
+                switch status {
+                case .authorized:
+                    // 保存视频
+                    print("保存视频")
+                case .denied, .restricted:
+                    print("权限被拒绝")
+                case .notDetermined:
+                    // 等待用户授权
+                    print("等待用户授权")
+                @unknown default:
+                    break
+                }
+            }
+            
+            let session = URLSession.shared
+            let task = session.dataTask(with: videoURL) { (data, response, error) in
+                if let error = error {
+                    DispatchQueue.main.async {
+                        completion(nil, "下载失败: \(error.localizedDescription)")
+                    }
+                    return
+                }
+                
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode) else {
+                    DispatchQueue.main.async {
+                        completion(nil, "服务器响应错误")
+                    }
+                    return
+                }
+                
+                guard let data = data else {
+                    DispatchQueue.main.async {
+                        completion(nil, "视频数据为空")
+                    }
+                    return
+                }
+                
+                // 保存到相册
+                PHPhotoLibrary.shared().performChanges({
+                    let creationRequest = PHAssetCreationRequest.forAsset()
+                    creationRequest.addResource(with: .video, data: data, options: nil)
+                    
+            
+                }) { success, error in
+                    DispatchQueue.main.async {
+                        if success {
+                            let resultDict = NSDictionary(dictionary: [
+                                "success": true,
+                                "message": "视频保存成功"
+                            ])
+                            completion(resultDict, nil)
+                        } else {
+                            completion(nil, "保存到相册失败: \(error?.localizedDescription ?? "未知错误")")
+                        }
+                    }
+                }
+            }
+            
+            task.resume()
+        }
+    
+    
     
     // TODO: implement with PHPhotoLibrary (UIImageWriteToSavedPhotosAlbum) instead of deprecated ALAssetsLibrary,
     // as described here: http://stackoverflow.com/questions/11972185/ios-save-photo-in-an-app-specific-album
@@ -616,7 +692,7 @@ final class PhotoLibraryService {
     
     //}
     
-    func saveVideo(_ url: String, album: String, completion: @escaping (_ libraryItem: NSDictionary?, _ error: String?)->Void) {
+    //func saveVideo(_ url: String, album: String, completion: @escaping (_ libraryItem: NSDictionary?, _ error: String?)->Void) {
         
         //        guard let videoURL = URL(string: url) else {
         //            completion(nil, "Could not parse DataURL")
@@ -691,7 +767,7 @@ final class PhotoLibraryService {
         //
         //        }
         
-    }
+    //}
     
     struct PictureData {
         var data: Data
